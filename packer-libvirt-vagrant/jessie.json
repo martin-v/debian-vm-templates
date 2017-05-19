@@ -53,6 +53,7 @@
       ],
       "scripts": [
         "../helpers/vagrant-setup",
+        "scripts/qemu-guest-agent.sh",
         "scripts/minimize.sh"
       ]
     }
