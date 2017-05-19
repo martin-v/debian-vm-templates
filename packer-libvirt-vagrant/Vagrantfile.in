@@ -1,6 +1,6 @@
 Vagrant.configure("2") do |config|
   config.vm.base_mac = "0800278dc04d"
-  config.vm.synced_folder ".", "/vagrant", type: "rsync"
+  config.vm.synced_folder ".", "/vagrant", type: "sshfs"
   config.vm.post_up_message = "Vanilla Debian box. See https://atlas.hashicorp.com/debian/ for help and bug reports"
   config.vm.provider :libvirt do |libvirt|
     libvirt.video_type = 'qxl'
