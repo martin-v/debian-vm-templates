@@ -1,4 +1,4 @@
-export VAGRANT_DEFAULT_PROVIDER = virtualbox
+export VAGRANT_DEFAULT_PROVIDER = libvirt
 
 DISTRIBUTIONS = wheezy jessie stretch sid contrib-jessie
 TESTED = wheezy.tested jessie.tested contrib-jessie.tested
@@ -7,9 +7,7 @@ SHELL = /bin/bash # needed for |&
 .SHELLFLAGS = -u -o pipefail -c
 TEE = |& tee --append $*.log # log every command
 
-include ../helpers/vagrantBoxTesting.mk
-
-.PRECIOUS: %.build %.vmdk %.box
+.PRECIOUS: %.build %.qcow2 %.box
 
 all:
 	@echo "Usage: make <distribution>"
@@ -20,20 +18,16 @@ $(TESTED): % :
 
 # set the shared folder method to rsync for most boxes
 VAGRANT_FILE = Vagrantfile.in
-# contrib boxes use VirtualBox default, ie vboxfs kernel module
-contrib-%.box: VAGRANT_FILE= Vagrantfile-contrib.in
 
-%.box: %.vmdk
-	import2vbox --memory 512 --vcpus 2 $*.vmdk $(TEE)
+%.box: %.qcow2
 	mkdir -p $*.box.in
 	cp $(VAGRANT_FILE) $*.box.in/Vagrantfile
-	cp $*.ovf $*.box.in/box.ovf
-	cp $*.ovf $*.vmdk $*.box.in/
-	echo '{"provider": "virtualbox"}' > $*.box.in/metadata.json
-	cd $*.box.in && tar czvf ../$*.box ./metadata.json ./box.ovf ./$*.vmdk ./Vagrantfile
+	cp $*.qcow2 $*.box.in/box.img
+	echo '{"provider": "libvirt", "format" : "qcow2", "virtual_size" : 10}' > $*.box.in/metadata.json
+	cd $*.box.in && tar czvf ../$*.box ./metadata.json ./box.img ./Vagrantfile
 
-%.vmdk: %.build
-	qemu-img convert -O vmdk $</$*.raw $*.vmdk $(TEE)
+%.qcow2: %.build
+	qemu-img convert -O qcow2 $</$*.raw $*.qcow2 $(TEE)
 
 %.build:
 	packer build $*.json |& tee $*.log # create a new log file
@@ -69,8 +63,7 @@ clean::
 	-rmdir *.build/
 	-$(RM) *.box.in/*
 	-rmdir *.box.in/
-	-$(RM) *.vmdk
-	-$(RM) *.ovf
+	-$(RM) *.qcow2
 
 cleanall: clean
 	$(RM) *.box *.uploaded *.tested *.log
